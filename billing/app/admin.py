@@ -1,22 +1,32 @@
 from django.contrib import admin
-from .models import Product, Order, Payment
+from .models import Product, Order, OrderItem, Payment
 
 
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'cost')
-    search_fields = ('name',)
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 1  # Предоставляет одну дополнительную строку для нового элемента заказа
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'total_sum', 'status', 'creation_time', 'confirmation_time')
-    list_filter = ('status', 'creation_time')
-    search_fields = ('id',)
+    list_display = ['id', 'status', 'creation_time', 'confirmation_time', 'display_total_sum']
+    inlines = [OrderItemInline]
+
+    def display_total_sum(self, obj):
+        return obj.total_sum
+    display_total_sum.short_description = "Итоговая сумма"
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ['name', 'cost', 'content']
+    search_fields = ['name']
 
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'order', 'amount', 'status', 'payment_type')
-    list_filter = ('status', 'payment_type')
-    search_fields = ('order__id',)
+    list_display = ['id', 'order', 'display_amount', 'status', 'payment_type']
+
+    def display_amount(self, obj):
+        return obj.amount
+    display_amount.short_description = "Сумма"
