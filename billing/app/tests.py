@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -108,3 +109,37 @@ class OrderAndPaymentAPITests(APITestCase):
         payment = order.payments.first()
         self.assertEqual(payment.status, "Оплачен")
         self.assertEqual(payment.amount, order.total_sum)  # Проверяем, что сумма платежа равна сумме заказа
+
+
+class AdminTest(TestCase):
+    def setUp(self):
+        # Создаем пользователя администратора
+        self.admin_user = User.objects.create_superuser(
+            username='admin',
+            email='admin@example.com',
+            password='password123'
+        )
+        self.client.login(username='admin', password='password123')
+
+        # Создаем тестовые объекты
+        self.product = Product.objects.create(
+            name='Test Product',
+            content='Test Content',
+            cost='9.99'
+        )
+        self.order = Order.objects.create()
+
+    def test_order_confirm_action(self):
+        """Тест выполнения действия подтверждения заказа."""
+        # Добавление оплаченного платежа к заказу для возможности подтверждения
+        Payment.objects.create(order=self.order, amount='9.99', status='Оплачен', payment_type='card')
+
+        # URL для действия подтверждения заказа
+        confirm_url = reverse('admin:order-confirm', args=[self.order.pk])
+        response = self.client.get(confirm_url)
+        # Перенаправление обратно на список заказов после подтверждения
+        self.assertRedirects(response, reverse('admin:app_order_changelist'))
+
+        # Проверка изменения статуса заказа
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, 'confirmed')
